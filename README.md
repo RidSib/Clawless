@@ -6,6 +6,40 @@ Do the **initial setup once** (Terraform + `cloud-init.yaml`); after that, **no 
 
 This repo is set up for **Google Cloud** (Terraform + cloud-init provision a single Compute Engine VM that builds and runs OpenClaw in Docker, with Node, Python, and Playwright-friendly tooling). The same pattern — Terraform for the VM plus cloud-init for bootstrap — can be easily adjusted for other cloud providers (AWS, Azure, etc.) by swapping the Terraform provider and instance types; the `cloud-init.yaml` and OpenClaw setup remain largely the same.
 
+## Keeping it safe
+
+OpenClaw is powerful — it can act on your behalf across messaging, code, and deployment platforms. That power requires care.
+
+### Messaging channels (WhatsApp, Telegram)
+
+Connecting via WhatsApp or Telegram is **relatively safe** as long as:
+
+- **Communication is isolated to you (the admin).** The default config restricts the bot to an allowlist of your user ID only. No group chats, no strangers.
+- **You don't give the model access to read arbitrary messages.** As long as interaction flows through a dedicated bot conversation that only you control, the attack surface is small.
+
+WhatsApp (via the Control UI bridge) is the **fastest and easiest** way to interact with your deployment on the go. Telegram works the same way with the built-in bot plugin.
+
+### What to be careful with
+
+- **E-mail access is a security risk.** Incoming emails from unknown senders can contain prompt injections — crafted text that tricks the model into performing unintended actions. Avoid giving OpenClaw read access to inboxes that receive external mail.
+- **Broad communication access.** Any integration that lets the model freely read messages from other people (group chats, shared inboxes, public channels) increases the risk of prompt injection. Keep access scoped and read-only where possible.
+- **API tokens with wide permissions.** Give each token the minimum scope it needs. A GitHub PAT with full repo access is more dangerous than one scoped to a single repository.
+
+### Rule of thumb
+
+The default Clawless config is conservative: admin-only messaging, no email, scoped tokens. **Don't loosen these defaults unless you understand the implications.**
+
+### Architecture
+
+![Clawless architecture](docs/clawless-architecture.png)
+
+**Why a full VM instead of just a Docker container?** OpenClaw is designed to run persistently — it uses internal triggers, scheduled tasks, and background processes (e.g. cron-style hooks, session memory, Telegram polling) that need to stay alive. A standalone container on a serverless platform would be put to sleep when idle, breaking these features. A dedicated VM keeps the gateway running 24/7 so OpenClaw can act on triggers, respond to messages, and run scheduled tasks even when you're not actively connected.
+
+- **GCP:** One Compute Engine VM (Ubuntu 22.04). Firewall allows SSH (22) and OpenClaw gateway (18789).
+- **VM host:** cloud-init runs on first boot (Docker, Node, Python, OpenClaw clone). Config and workspace live at `~/.openclaw`.
+- **Docker:** Single image `openclaw:local`. Long-running **openclaw-gateway** (port 18789); **openclaw-cli** runs on demand (e.g. dashboard, pairing).
+- **You:** SSH tunnel to the VM, then open `http://localhost:18789` for the Control UI. No direct public exposure of the UI.
+
 ## Deploy
 
 1. **Prerequisites:** [Terraform](https://www.terraform.io/downloads) ≥ 1.5, [gcloud](https://cloud.google.com/sdk/docs/install) configured, SSH key at `~/.ssh/id_ed25519.pub` (or set `public_key_path` in tfvars).
@@ -152,6 +186,27 @@ On a fresh deployment, the Control UI will show `disconnected (1008): pairing re
 
 - **OpenAI:** The default model is `openai/gpt-5.2`; set `OPENAI_API_KEY` in `cloud-init.yaml` (required).
 - **Google/Gemini (optional):** Only needed if you switch the model to Gemini or use it as a fallback. Enable the [Generative Language API](https://console.developers.google.com/apis/api/generativelanguage.googleapis.com/overview) in your GCP project and set `GEMINI_API_KEY`.
+- **Anthropic/Claude:** Coming soon (see [Roadmap](#roadmap)).
+
+## What you can do with it
+
+Once deployed, OpenClaw is a cloud-based AI agent you can interact with from anywhere.
+
+### Chat from your phone (WhatsApp / Telegram)
+
+The fastest way to use your deployment. Connect WhatsApp through the Control UI bridge or Telegram via the built-in bot plugin. Send a message, get a response — no laptop needed. This is ideal for quick tasks, questions, and on-the-go use.
+
+### Build and deploy apps (GitHub + Vercel)
+
+Connect your GitHub PAT and Vercel token, and OpenClaw can create repositories, write code, push commits, and deploy to Vercel — all from a chat message. Prototype a new app, fix a bug, or ship an update from your phone.
+
+### Manage knowledge (Notion)
+
+With the Notion integration, OpenClaw can read and write to your Notion workspace — useful for note-taking, knowledge management, and structured data tasks.
+
+### Web research (Apify)
+
+Connect Apify to give OpenClaw the ability to scrape and extract structured data from the web.
 
 ## Repo contents
 
@@ -160,14 +215,35 @@ On a fresh deployment, the Control UI will show `disconnected (1008): pairing re
 
 `.terraform/` and `*.tfstate` are gitignored; run `terraform init` after clone.
 
+## Cost estimate
+
+With the default settings (`e2-standard-2`, 50 GB SSD, `europe-west3`), the server costs roughly **~$50/month** to run 24/7:
+
+| Resource | Spec | ~Monthly cost |
+|----------|------|---------------|
+| Compute (e2-standard-2) | 2 vCPU, 8 GB RAM | ~$49 |
+| Boot disk (pd-ssd) | 50 GB | ~$8.50 |
+| Network egress | Minimal (SSH tunnel) | ~$0 |
+| **Total** | | **~$57** |
+
+This does **not** include API costs for the LLM (OpenAI, Gemini, etc.) — those depend entirely on your usage. To reduce server costs, stop the VM when not in use (`gcloud compute instances stop cloud-automation-dev --zone=europe-west3-a`) or switch to a smaller machine type like `e2-medium` (~$25/month).
+
+### Controlling API spend
+
+We recommend using an API provider like **OpenAI** (or Anthropic/Claude when supported) where you can **prepay a fixed credit balance** (e.g. $10–$20) rather than a provider that bills you on open-ended usage. With a prepaid balance, the model simply stops working when credits run out — giving you a hard budgetary safety net. This prevents runaway costs from unexpected loops or heavy usage. Top up only when you need to.
+
 ## Disclaimer
 
-**We do not take any responsibility for actions taken by or resulting from your use of this deployment.** Infrastructure, cloud resources, and API usage are under your control and at your risk. Use Clawless only if you have the necessary expertise (Terraform, GCP, Docker, networking, and secret management) and exercise appropriate care.
+**This is an open source project provided as-is — use at your own risk.** We do not take any responsibility for actions taken by or resulting from your use of this deployment, including but not limited to cloud costs, API charges, data loss, security incidents, or unintended actions performed by the AI model. Infrastructure, cloud resources, and API usage are entirely under your control. Use Clawless only if you have the necessary expertise in Terraform, cloud infrastructure, Docker, networking, and secret management, and exercise appropriate care at every step.
 
 ## License and contributing
 
 Clawless is **open source** under the [MIT License](LICENSE). Safe deployment patterns for OpenClaw (like example configs and Terraform) belong in this repo; secrets and keys stay in your local `cloud-init.yaml` and `terraform.tfvars` only.
 
-## TODO
+## Roadmap
 
-- **Move secrets to Terraform variables:** Define API keys as Terraform variables in `variables.tf`, set values in `terraform.tfvars` (already gitignored), and inject via `templatefile()` — same pattern as `ssh_public_key`. That would make `cloud-init.yaml` a secret-free template safe to commit.
+- **Claude (Anthropic) support** — add Claude as a model option alongside OpenAI and Gemini.
+- **Open source models** — support for self-hosted models (e.g. Llama, Mistral) via local inference or API-compatible endpoints.
+- **Voice integration** — talk to your OpenClaw deployment using voice input/output (via VAPI or similar).
+- **Multi-cloud templates** — AWS and Azure variants of the Terraform config.
+- **Secrets via Terraform variables** — move API keys out of `cloud-init.yaml` into `terraform.tfvars` with `templatefile()` injection, making the cloud-init file a secret-free template safe to commit.
