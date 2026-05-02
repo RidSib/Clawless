@@ -4,10 +4,10 @@
 
 Do the **initial setup once** (Terraform + `cloud-init.yaml`); after that, **no additional setup is required**. Run `terraform apply` and your VM comes up with OpenClaw built and running. No manual install steps, no post-boot configuration. As many instances as you want.
 
-This repo now supports **Google Cloud** (root Terraform) and **Azure**
-(`azure/` Terraform). Both variants use the same model: Terraform provisions a
-single Ubuntu VM and `cloud-init.yaml` bootstraps OpenClaw. This keeps provider
-differences isolated while preserving one shared OpenClaw setup path.
+This repo supports **Azure** (`azure/` Terraform, **default path for docs and
+scripts**) and **Google Cloud** (root Terraform). Both use the same model:
+Terraform provisions one Ubuntu VM and `cloud-init.yaml` bootstraps OpenClaw.
+Provider differences stay isolated; OpenClaw setup is shared.
 
 ## Keeping it safe
 
@@ -38,7 +38,8 @@ The default Clawless config is conservative: admin-only messaging, no email, sco
 
 **Why a full VM instead of just a Docker container?** OpenClaw is designed to run persistently — it uses internal triggers, scheduled tasks, and background processes (e.g. cron-style hooks, session memory, Telegram polling) that need to stay alive. A standalone container on a serverless platform would be put to sleep when idle, breaking these features. A dedicated VM keeps the gateway running 24/7 so OpenClaw can act on triggers, respond to messages, and run scheduled tasks even when you're not actively connected.
 
-- **GCP:** One Compute Engine VM (Ubuntu 22.04). Firewall allows SSH (22) and OpenClaw gateway (18789).
+- **Azure / GCP:** One VM per stack (Ubuntu 22.04). NSG or firewall allows SSH
+  (22) and the OpenClaw gateway (18789) per provider defaults.
 - **VM host:** cloud-init runs on first boot (Docker, Node, GitHub CLI,
   Vercel CLI, Python, OpenClaw clone). Config and workspace live at `~/.openclaw`.
 - **Docker:** Single image `openclaw:local`. Long-running **openclaw-gateway** (port 18789); **openclaw-cli** runs on demand (e.g. dashboard, pairing).
@@ -48,30 +49,20 @@ The default Clawless config is conservative: admin-only messaging, no email, sco
 
 Choose one stack:
 
-- **GCP (default):** use repo root.
-- **Azure:** use `azure/` and follow [Azure deployment guide](azure/README.md).
+- **Azure (default):** use `azure/` and [Azure deployment guide](azure/README.md).
+  Prerequisites: Terraform ≥ 1.5, `az login` + subscription, SSH key at
+  `~/.ssh/id_ed25519.pub` (or `public_key_path` in tfvars). From **`azure/`**:
+  `cp terraform.tfvars.example terraform.tfvars`, then `terraform init` /
+  `apply`. Shared **`cloud-init.yaml`** lives at repo root — copy from
+  **`cloud-init.yaml.example`** once (see tutorial below).
 
-1. **Prerequisites (GCP path):** [Terraform](https://www.terraform.io/downloads)
-   ≥ 1.5, [gcloud](https://cloud.google.com/sdk/docs/install) configured, SSH
-   key at `~/.ssh/id_ed25519.pub` (or set `public_key_path` in tfvars).
+- **GCP:** repo-root Terraform. Prerequisites: Terraform ≥ 1.5,
+  [gcloud](https://cloud.google.com/sdk/docs/install), SSH key as above.
+  `cp terraform.tfvars.example terraform.tfvars`, set **`project_id`**, same
+  **`cloud-init.yaml`** flow, then `terraform init` / `apply` from **`/`**.
 
-2. **Configure:** Copy the example files, then follow the [Tutorial: Setting up cloud-init.yaml](#tutorial-setting-up-cloud-inityaml) below. Also set your GCP project:
-   ```bash
-   cp terraform.tfvars.example terraform.tfvars
-   cp cloud-init.yaml.example cloud-init.yaml
-   ```
-   - Edit `terraform.tfvars`: set `project_id = "your-gcp-project-id"`.
-   - Edit `cloud-init.yaml`: replace every `your-*` placeholder (see tutorial). **Never commit `cloud-init.yaml`** — it stays local and gitignored.
-
-3. **Apply:**
-   ```bash
-   terraform init
-   terraform plan
-   terraform apply
-   ```
-   First boot can take 15–20 minutes while the OpenClaw image builds. Subsequent runs are much faster.
-
-4. **SSH:** Use the `ssh_command` output, e.g. `ssh dev@<nat_ip>`.
+First boot can take 15–20 minutes while the OpenClaw image builds; later applies
+are faster. Use Terraform **`ssh_command`** output to SSH to the VM.
 
 ### Post-deploy helper (tunnel + token URL)
 
@@ -81,7 +72,9 @@ From the repo root, after `terraform init` / `apply` in `azure/` or `/`:
 ./scripts/clawless-post-deploy.sh --cloud azure --apply --tunnel
 ```
 
-Use `--cloud gcp` for the GCP stack. Omit `--apply` to only verify an existing
+**`--cloud azure`** is the default for **`clawless-post-deploy.sh`** and
+**`clawless-full-redeploy.sh`** (omit the flag or pass **`--cloud gcp`** for the
+GCP stack). Omit **`--apply`** to only verify an existing
 VM, wait for the gateway, and print the Control UI link. **`--notify-telegram`**
 sends a short DM via the **Telegram Bot API** to `allowFrom[0]` (default text:
 *I just came online!* — override with env **`TELEGRAM_PING_TEXT`**). That is not

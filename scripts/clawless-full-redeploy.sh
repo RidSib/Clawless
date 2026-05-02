@@ -3,7 +3,7 @@
 # Prints a wall-clock marker before/after each phase (cumulative seconds).
 #
 # Usage:
-#   ./scripts/clawless-full-redeploy.sh
+#   ./scripts/clawless-full-redeploy.sh              # default: azure
 #   ./scripts/clawless-full-redeploy.sh --cloud gcp
 #
 # Options:
