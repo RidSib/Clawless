@@ -2,3 +2,7 @@
 # terraform.tfvars is gitignored and not committed.
 
 project_id = "your-gcp-project-id"
+
+# Numeric Telegram user ID (Not @username). Same value OpenClaw uses for
+# allowFrom, groupAllowFrom, and commands.ownerAllowFrom.
+telegram_user_id = "your-telegram-user-id"

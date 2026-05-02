@@ -23,3 +23,6 @@ override.tf.json
 *.pem
 cloud-init.yaml
 !cloud-init.yaml.example
+
+# Local helper output (contains gateway token in URL)
+.clawless-last-ui.url

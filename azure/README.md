@@ -39,11 +39,16 @@ terraform plan
 terraform apply
 ```
 
+**One-shot apply + tunnel + token URL (from repo root):** see
+[`../scripts/clawless-post-deploy.sh`](../scripts/clawless-post-deploy.sh) and
+[`../README.md`](../README.md) (section *Post-deploy helper*).
+
 Before `terraform apply`, verify `cloud-init.yaml` has real keys (not
 placeholders), especially:
 
 - `AZURE_OPENAI_API_KEY` and **`AZURE_OPENAI_ENDPOINT`** (required — Foundry project OpenAI-compatible base `.../openai/v1`; see **`docs/openclaw-azure.md`**)
 - `OPENAI_API_KEY` (optional — used as fallback if Azure OpenAI is unreachable)
+- **Telegram:** real **`TELEGRAM_BOT_TOKEN`** in **`cloud-init.yaml`** (both `.env` blocks) **and** numeric **`telegram_user_id`** in **`terraform.tfvars`**. See root [**README**](../README.md).
 - Any other integration keys you expect to work on first boot
 
 Use outputs:

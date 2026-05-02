@@ -21,3 +21,17 @@ variable "ssh_user" {
 variable "public_key_path" {
   default = "~/.ssh/id_ed25519.pub"
 }
+
+variable "telegram_user_id" {
+  description = "Numeric Telegram user ID for DM/group allowlists and commands.ownerAllowFrom (see cloud-init / BotFather setup)."
+  type        = string
+  default     = "your-telegram-user-id"
+
+  validation {
+    condition = (
+      var.telegram_user_id == "your-telegram-user-id"
+      || can(regex("^[0-9]{5,}$", var.telegram_user_id))
+    )
+    error_message = "telegram_user_id must be your numeric Telegram ID (digits only), or the placeholder your-telegram-user-id if you are not using Telegram yet."
+  }
+}

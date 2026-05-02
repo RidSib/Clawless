@@ -39,7 +39,8 @@ The default Clawless config is conservative: admin-only messaging, no email, sco
 **Why a full VM instead of just a Docker container?** OpenClaw is designed to run persistently — it uses internal triggers, scheduled tasks, and background processes (e.g. cron-style hooks, session memory, Telegram polling) that need to stay alive. A standalone container on a serverless platform would be put to sleep when idle, breaking these features. A dedicated VM keeps the gateway running 24/7 so OpenClaw can act on triggers, respond to messages, and run scheduled tasks even when you're not actively connected.
 
 - **GCP:** One Compute Engine VM (Ubuntu 22.04). Firewall allows SSH (22) and OpenClaw gateway (18789).
-- **VM host:** cloud-init runs on first boot (Docker, Node, Python, OpenClaw clone). Config and workspace live at `~/.openclaw`.
+- **VM host:** cloud-init runs on first boot (Docker, Node, GitHub CLI, Python,
+  OpenClaw clone). Config and workspace live at `~/.openclaw`.
 - **Docker:** Single image `openclaw:local`. Long-running **openclaw-gateway** (port 18789); **openclaw-cli** runs on demand (e.g. dashboard, pairing).
 - **You:** SSH tunnel to the VM, then open `http://localhost:18789` for the Control UI. No direct public exposure of the UI.
 
@@ -71,6 +72,30 @@ Choose one stack:
    First boot can take 15–20 minutes while the OpenClaw image builds. Subsequent runs are much faster.
 
 4. **SSH:** Use the `ssh_command` output, e.g. `ssh dev@<nat_ip>`.
+
+### Post-deploy helper (tunnel + token URL)
+
+From the repo root, after `terraform init` / `apply` in `azure/` or `/`:
+
+```bash
+./scripts/clawless-post-deploy.sh --cloud azure --apply --tunnel
+```
+
+Use `--cloud gcp` for the GCP stack. Omit `--apply` to only verify an existing
+VM, wait for the gateway, and print the Control UI link. **`--notify-telegram`**
+sends a short DM via the **Telegram Bot API** to `allowFrom[0]` (default text:
+*I just came online!* — override with env **`TELEGRAM_PING_TEXT`**). That is not
+the OpenClaw model “writing” a reply; it is a direct bot ping so you know the
+stack is up. `--open` (macOS) opens the URL. `--strict-config` fails the run if
+Telegram is still configured with placeholders (see README *Telegram needs both*).
+The link is also saved to **`.clawless-last-ui.url`** (gitignored; it contains
+the gateway token). The script logs **`[timestamp]`** lines with **per-phase
+seconds** and **cumulative** elapsed time so you can see how long SSH wait,
+gateway bootstrap, and the rest actually took.
+
+For **destroy + apply + post-deploy** with wall-clock markers between phases,
+run **`./scripts/clawless-full-redeploy.sh`** from the repo root (`--help` lists
+`--cloud`, `--skip-destroy`, `--no-notify`, and related flags).
 
 ### Security note (applies to both providers)
 
@@ -111,8 +136,8 @@ If you don’t use Gemini, you can leave the placeholder or set a dummy value; t
 
 | Placeholder | Variable | Where to get it |
 |-------------|----------|------------------|
-| `your-telegram-bot-token` | `TELEGRAM_BOT_TOKEN` | [@BotFather](https://t.me/BotFather) on Telegram. Required only if you use the Telegram plugin. |
-| `your-telegram-user-id` | (in `openclaw.json`) | Your Telegram user ID (e.g. from [@userinfobot](https://t.me/userinfobot)). Used in `channels.telegram.allowFrom` so the bot accepts your DMs. |
+| `your-telegram-bot-token` | `TELEGRAM_BOT_TOKEN` | [@BotFather](https://t.me/BotFather). Replace in **both** `.env` sections inside `cloud-init.yaml` (`/opt/openclaw/.env` and `~/.openclaw/.env`). If this stays a placeholder, the bot never authenticates (Telegram API errors). |
+| `your-telegram-user-id` | **Terraform** `telegram_user_id` | Your **numeric** user ID (not `@username`). Set in **`terraform.tfvars`** as `telegram_user_id = "123456789"`. Injected into `openclaw.json` for `allowFrom`, `groupAllowFrom`, and `commands.ownerAllowFrom`. |
 | `your-notion-api-key` | `NOTION_API_KEY` | [Notion integrations](https://www.notion.so/my-integrations). For the Notion skill. |
 | `your-vercel-token` | `VERCEL_TOKEN` | [Vercel account tokens](https://vercel.com/account/tokens). For Vercel-related tools. |
 | `your-vapi-api-key` | `VAPI_API_KEY` | [VAPI dashboard](https://dashboard.vapi.ai). For voice/API integrations. |
@@ -121,13 +146,15 @@ If you don’t use Gemini, you can leave the placeholder or set a dummy value; t
 
 Replace each placeholder only if you use that integration. For unused ones you can leave the placeholder or a dummy value.
 
+**Telegram needs both:** a real **`TELEGRAM_BOT_TOKEN`** in **`cloud-init.yaml`** and a numeric **`telegram_user_id`** in **`terraform.tfvars`**. If either stays a placeholder, the plugin is enabled but the bot will not connect. After fixing on a new deploy, **recreate the VM** (user-data runs only on first boot), or patch the files on the instance and **`docker compose restart openclaw-gateway`**.
+
 ### Checklist
 
 1. Copy: `cp cloud-init.yaml.example cloud-init.yaml`
 2. Set **at least** `your-azure-openai-api-key` and `your-azure-openai-endpoint` everywhere they appear.
 3. Optionally set `your-openai-api-key` everywhere it appears (used as fallback).
 4. Replace `your-vm-public-ip` in `gateway.controlUi.allowedOrigins` with your VM’s public IP if you open Control UI via `http://<ip>:18789` (tunnel-only users can leave localhost entries only — see **`docs/openclaw-azure.md`**).
-5. Set `your-telegram-user-id` in the `openclaw.json` block if you use Telegram (search for `"allowFrom": ["your-telegram-user-id"]` and put your numeric user ID in the list).
+5. For **Telegram:** set **`telegram_user_id`** in **`terraform.tfvars`** to your numeric ID, and replace every **`your-telegram-bot-token`** in **`cloud-init.yaml`** with your BotFather token.
 6. Set any other `your-*` values you need for plugins/skills.
 7. Save. Do **not** commit `cloud-init.yaml`.
 
@@ -251,7 +278,10 @@ Connect Apify to give OpenClaw the ability to scrape and extract structured data
 - **Azure Terraform:** `azure/main.tf`, `azure/variables.tf`,
   `azure/outputs.tf`, `azure/versions.tf` — one Ubuntu 22.04 VM with NSG rules
   for SSH and gateway parity.
-- **cloud-init.yaml.example** — template for cloud-init: Docker, Docker Compose, Node 20, Python 3, dev tools; clones OpenClaw, builds the image, and starts the gateway. Copy to `cloud-init.yaml` (gitignored) and fill in your keys.
+- **cloud-init.yaml.example** — template for cloud-init: Docker, Docker Compose,
+  Node 20, Python 3, GitHub CLI (`gh`), dev tools; clones OpenClaw, builds the
+  image, and starts the gateway. Copy to `cloud-init.yaml` (gitignored) and fill
+  in your keys.
 - **docs/openclaw-azure.md** — Azure Foundry endpoint shape, **`openai-completions`** rationale, Control UI origins, smoke tests, and **known-good OpenClaw version** snapshot.
 
 `cloud-init.yaml`, `.terraform/`, `*.tfstate*`, and `*.tfvars` are gitignored

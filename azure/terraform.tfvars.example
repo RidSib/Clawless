@@ -10,3 +10,6 @@ vm_size             = "Standard_D2s_v5"
 environment = "dev"
 project     = "clawless"
 owner       = "your-name"
+
+# Numeric Telegram user ID for DM + owner commands (not @username).
+telegram_user_id = "your-telegram-user-id"
