@@ -121,7 +121,7 @@ runcmd:
           "azure-openai-responses": {
             "baseUrl": "$AZURE_EP",
             "apiKey": "$AZURE_KEY",
-            "api": "openai-responses",
+            "api": "openai-completions",
             "authHeader": false,
             "headers": { "api-key": "$AZURE_KEY" },
             "models": [
@@ -131,27 +131,8 @@ runcmd:
                 "reasoning": false,
                 "input": ["text", "image"],
                 "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
-                "contextWindow": 400000,
+                "contextWindow": 272000,
                 "maxTokens": 128000,
-                "compat": { "supportsStore": false }
-              }
-            ]
-          },
-          "azure-openai-chat": {
-            "baseUrl": "$AZURE_EP",
-            "apiKey": "$AZURE_KEY",
-            "api": "openai-chat",
-            "authHeader": false,
-            "headers": { "api-key": "$AZURE_KEY" },
-            "models": [
-              {
-                "id": "Kimi-K2.5",
-                "name": "Kimi K2.5 (Azure)",
-                "reasoning": true,
-                "input": ["text", "image"],
-                "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
-                "contextWindow": 262144,
-                "maxTokens": 262144,
                 "compat": { "supportsStore": false }
               }
             ]
@@ -168,8 +149,7 @@ runcmd:
             "primary": "azure-openai-responses/gpt-5.5"
           },
           "models": {
-            "azure-openai-responses/gpt-5.5": {},
-            "azure-openai-chat/Kimi-K2.5": {}
+            "azure-openai-responses/gpt-5.5": {}
           }
         }
       },
@@ -178,6 +158,13 @@ runcmd:
         "auth": { "mode": "token", "token": "$TOKEN" },
         "port": 18789,
         "bind": "lan",
+        "controlUi": {
+          "allowedOrigins": [
+            "http://localhost:18789",
+            "http://127.0.0.1:18789",
+            "http://your-vm-public-ip:18789"
+          ]
+        },
         "tailscale": { "mode": "off", "resetOnExit": false },
         "nodes": {
           "denyCommands": [

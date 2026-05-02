@@ -87,9 +87,9 @@ After copying `cloud-init.yaml.example` to `cloud-init.yaml`, open `cloud-init.y
 | Placeholder | Variable | Where to get it |
 |-------------|----------|------------------|
 | `your-azure-openai-api-key` | `AZURE_OPENAI_API_KEY` | Azure Portal → your Azure OpenAI resource → **Keys and Endpoint** → KEY 1. |
-| `your-azure-openai-endpoint` | `AZURE_OPENAI_ENDPOINT` | Same page → **Endpoint** (e.g. `https://<resource>.openai.azure.com/`). |
+| `your-azure-openai-endpoint` | `AZURE_OPENAI_ENDPOINT` | Azure AI Foundry project **OpenAI-compatible** base: `https://<resource>.services.ai.azure.com/api/projects/<project-id>/openai/v1`. See [`docs/openclaw-azure.md`](docs/openclaw-azure.md). |
 
-Replace **every** occurrence of `your-azure-openai-api-key` and `your-azure-openai-endpoint` in the file (there are two of each: one in the `echo` block, one in the `ENVEOF` block). The default primary model is `azure-openai-responses/gpt-5.5`.
+Replace **every** occurrence of `your-azure-openai-api-key` and `your-azure-openai-endpoint` in the file (there are two of each: one in the `echo` block, one in the `ENVEOF` block). The default primary model is `azure-openai-responses/gpt-5.5` (`openai-completions` adapter toward Azure chat — details in **`docs/openclaw-azure.md`**).
 
 ### Optional: direct OpenAI (fallback)
 
@@ -126,9 +126,10 @@ Replace each placeholder only if you use that integration. For unused ones you c
 1. Copy: `cp cloud-init.yaml.example cloud-init.yaml`
 2. Set **at least** `your-azure-openai-api-key` and `your-azure-openai-endpoint` everywhere they appear.
 3. Optionally set `your-openai-api-key` everywhere it appears (used as fallback).
-4. Set `your-telegram-user-id` in the `openclaw.json` block if you use Telegram (search for `"allowFrom": ["your-telegram-user-id"]` and put your numeric user ID in the list).
-5. Set any other `your-*` values you need for plugins/skills.
-6. Save. Do **not** commit `cloud-init.yaml`.
+4. Replace `your-vm-public-ip` in `gateway.controlUi.allowedOrigins` with your VM’s public IP if you open Control UI via `http://<ip>:18789` (tunnel-only users can leave localhost entries only — see **`docs/openclaw-azure.md`**).
+5. Set `your-telegram-user-id` in the `openclaw.json` block if you use Telegram (search for `"allowFrom": ["your-telegram-user-id"]` and put your numeric user ID in the list).
+6. Set any other `your-*` values you need for plugins/skills.
+7. Save. Do **not** commit `cloud-init.yaml`.
 
 ## OpenClaw on the VM
 
@@ -137,13 +138,22 @@ Replace each placeholder only if you use that integration. For unused ones you c
 
 ### Accessing the Control UI
 
-The Control UI requires HTTPS or localhost (secure context), so you **must** use an SSH tunnel:
+The Control UI works most reliably through `localhost` because browser device
+auth requires a secure context. Use an SSH tunnel instead of opening the public
+VM IP directly.
 
 ```bash
+# GCP
 gcloud compute ssh dev@cloud-automation-dev --zone=europe-west3-a -- -N -L 18789:localhost:18789
+
+# Azure
+ssh -N -L 18789:localhost:18789 dev@<azure-vm-public-ip>
 ```
 
 Keep that running, then open **http://localhost:18789** in your browser.
+If you use the public Azure URL directly, `gateway.controlUi.allowedOrigins`
+must include that exact `http://<public-ip>:18789` origin and you still need the
+current gateway token.
 
 ### First-time device pairing
 
@@ -210,7 +220,7 @@ On a fresh deployment, the Control UI will show `disconnected (1008): pairing re
 
 ### API prerequisites
 
-- **Azure OpenAI (default):** The default model is `azure-openai-responses/gpt-5.5`; set `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` in `cloud-init.yaml` (required). Create an Azure OpenAI resource and deploy a model via [Azure AI Foundry](https://ai.azure.com/).
+- **Azure AI (default):** Model **`azure-openai-responses/gpt-5.5`** with **`openai-completions`** toward your Foundry project **`.../openai/v1`** base URL; **`reasoning`** is **`false`** in the seeded catalog entry so **`gpt-5.5`** on Azure **`chat/completions`** does not combine **reasoning-effort parameters** with **function tools** (disallowed by Azure for that combo). Troubleshooting history and validated OpenClaw version: **`docs/openclaw-azure.md`**.
 - **OpenAI (fallback):** Set `OPENAI_API_KEY` if you want direct OpenAI as a fallback. Optional if Azure OpenAI is your only provider.
 - **Google/Gemini (optional):** Only needed if you switch the model to Gemini or use it as a fallback. Enable the [Generative Language API](https://console.developers.google.com/apis/api/generativelanguage.googleapis.com/overview) in your GCP project and set `GEMINI_API_KEY`.
 - **Anthropic/Claude:** Coming soon (see [Roadmap](#roadmap)).
@@ -242,6 +252,7 @@ Connect Apify to give OpenClaw the ability to scrape and extract structured data
   `azure/outputs.tf`, `azure/versions.tf` — one Ubuntu 22.04 VM with NSG rules
   for SSH and gateway parity.
 - **cloud-init.yaml.example** — template for cloud-init: Docker, Docker Compose, Node 20, Python 3, dev tools; clones OpenClaw, builds the image, and starts the gateway. Copy to `cloud-init.yaml` (gitignored) and fill in your keys.
+- **docs/openclaw-azure.md** — Azure Foundry endpoint shape, **`openai-completions`** rationale, Control UI origins, smoke tests, and **known-good OpenClaw version** snapshot.
 
 `cloud-init.yaml`, `.terraform/`, `*.tfstate*`, and `*.tfvars` are gitignored
 for both stacks. Keep secrets only in local `cloud-init.yaml` and local tfvars.

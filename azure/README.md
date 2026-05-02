@@ -3,6 +3,11 @@
 Azure variant of Clawless using the same bootstrap model as GCP:
 Terraform provisions one Ubuntu VM, and `cloud-init.yaml` bootstraps OpenClaw.
 
+OpenClaw ↔ Azure quirks (validated adapter shape, **`gpt-5.5`**, Control UI origins,
+smoke commands, **pinned working OpenClaw version note**):
+
+[`../docs/openclaw-azure.md`](../docs/openclaw-azure.md)
+
 ## Prerequisites
 
 - Terraform >= 1.5
@@ -37,14 +42,24 @@ terraform apply
 Before `terraform apply`, verify `cloud-init.yaml` has real keys (not
 placeholders), especially:
 
-- `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` (required — the default model is Azure OpenAI)
+- `AZURE_OPENAI_API_KEY` and **`AZURE_OPENAI_ENDPOINT`** (required — Foundry project OpenAI-compatible base `.../openai/v1`; see **`docs/openclaw-azure.md`**)
 - `OPENAI_API_KEY` (optional — used as fallback if Azure OpenAI is unreachable)
 - Any other integration keys you expect to work on first boot
 
 Use outputs:
 
 - `ssh_command` for shell access.
-- `openclaw_control_ui` for direct UI URL.
+- `openclaw_control_ui` for the direct UI URL.
+
+The recommended Control UI path is still a localhost tunnel:
+
+```bash
+ssh -N -L 18789:localhost:18789 dev@<vm-public-ip>
+```
+
+Then open `http://localhost:18789`. Direct public HTTP access requires
+`gateway.controlUi.allowedOrigins` to include the exact public origin and still
+requires the current gateway token.
 
 ## Security posture
 
