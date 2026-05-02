@@ -93,6 +93,14 @@ For **destroy + apply + post-deploy** with wall-clock markers between phases,
 run **`./scripts/clawless-full-redeploy.sh`** from the repo root (`--help` lists
 `--cloud`, `--skip-destroy`, `--no-notify`, and related flags).
 
+### Twilio voice bridge (optional)
+
+Deploy **[realtime-phonecalls](https://github.com/RidSib/realtime-phonecalls)** on
+the same VM: clone that repo on the instance and run
+**`sudo ./scripts/install-on-vm.sh`** (see its README **Production**). Twilio
+needs a public **HTTPS** URL (NSG **443**, reverse proxy, or tunnel); OpenClaw
+stays on **18789**.
+
 ### Security note (applies to both providers)
 
 Parity defaults expose port `18789` publicly for fast setup. Recommended
