@@ -56,6 +56,9 @@ runcmd:
     apt-get update -y
     apt-get install -y gh
 
+  # Vercel CLI (token via Terraform → VERCEL_TOKEN in compose / .env)
+  - npm install -g vercel
+
   # Quality-of-life
   - echo 'alias ll="ls -alh"' >> /home/dev/.bashrc
   - echo 'export DOCKER_BUILDKIT=1' >> /home/dev/.bashrc

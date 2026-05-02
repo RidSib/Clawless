@@ -39,8 +39,8 @@ The default Clawless config is conservative: admin-only messaging, no email, sco
 **Why a full VM instead of just a Docker container?** OpenClaw is designed to run persistently — it uses internal triggers, scheduled tasks, and background processes (e.g. cron-style hooks, session memory, Telegram polling) that need to stay alive. A standalone container on a serverless platform would be put to sleep when idle, breaking these features. A dedicated VM keeps the gateway running 24/7 so OpenClaw can act on triggers, respond to messages, and run scheduled tasks even when you're not actively connected.
 
 - **GCP:** One Compute Engine VM (Ubuntu 22.04). Firewall allows SSH (22) and OpenClaw gateway (18789).
-- **VM host:** cloud-init runs on first boot (Docker, Node, GitHub CLI, Python,
-  OpenClaw clone). Config and workspace live at `~/.openclaw`.
+- **VM host:** cloud-init runs on first boot (Docker, Node, GitHub CLI,
+  Vercel CLI, Python, OpenClaw clone). Config and workspace live at `~/.openclaw`.
 - **Docker:** Single image `openclaw:local`. Long-running **openclaw-gateway** (port 18789); **openclaw-cli** runs on demand (e.g. dashboard, pairing).
 - **You:** SSH tunnel to the VM, then open `http://localhost:18789` for the Control UI. No direct public exposure of the UI.
 
@@ -281,7 +281,8 @@ Connect Apify to give OpenClaw the ability to scrape and extract structured data
   `azure/outputs.tf`, `azure/versions.tf` — one Ubuntu 22.04 VM with NSG rules
   for SSH and gateway parity.
 - **cloud-init.yaml.example** — template for cloud-init: Docker, Docker Compose,
-  Node 20, Python 3, GitHub CLI (`gh`), dev tools; clones OpenClaw, builds the
+  Node 20, Python 3, GitHub CLI (`gh`), Vercel CLI (`vercel`), dev tools;
+  clones OpenClaw, builds the
   image, and starts the gateway. Copy to `cloud-init.yaml` (gitignored) and fill
   in your keys.
 - **docs/openclaw-azure.md** — Azure Foundry endpoint shape, **`openai-completions`** rationale, Control UI origins, smoke tests, and **known-good OpenClaw version** snapshot.
