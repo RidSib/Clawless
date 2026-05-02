@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and customize values.
+# terraform.tfvars is gitignored and not committed.
+
+location            = "westeurope"
+resource_group_name = "cloud-automation-rg"
+vm_name             = "cloud-automation-dev"
+vm_size             = "Standard_D2s_v5"
+
+# Optional tags for cost tracking/governance.
+environment = "dev"
+project     = "clawless"
+owner       = "your-name"

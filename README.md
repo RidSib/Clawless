@@ -4,7 +4,10 @@
 
 Do the **initial setup once** (Terraform + `cloud-init.yaml`); after that, **no additional setup is required**. Run `terraform apply` and your VM comes up with OpenClaw built and running. No manual install steps, no post-boot configuration. As many instances as you want.
 
-This repo is set up for **Google Cloud** (Terraform + cloud-init provision a single Compute Engine VM that builds and runs OpenClaw in Docker, with Node, Python, and Playwright-friendly tooling). The same pattern — Terraform for the VM plus cloud-init for bootstrap — can be easily adjusted for other cloud providers (AWS, Azure, etc.) by swapping the Terraform provider and instance types; the `cloud-init.yaml` and OpenClaw setup remain largely the same.
+This repo now supports **Google Cloud** (root Terraform) and **Azure**
+(`azure/` Terraform). Both variants use the same model: Terraform provisions a
+single Ubuntu VM and `cloud-init.yaml` bootstraps OpenClaw. This keeps provider
+differences isolated while preserving one shared OpenClaw setup path.
 
 ## Keeping it safe
 
@@ -42,7 +45,14 @@ The default Clawless config is conservative: admin-only messaging, no email, sco
 
 ## Deploy
 
-1. **Prerequisites:** [Terraform](https://www.terraform.io/downloads) ≥ 1.5, [gcloud](https://cloud.google.com/sdk/docs/install) configured, SSH key at `~/.ssh/id_ed25519.pub` (or set `public_key_path` in tfvars).
+Choose one stack:
+
+- **GCP (default):** use repo root.
+- **Azure:** use `azure/` and follow [Azure deployment guide](azure/README.md).
+
+1. **Prerequisites (GCP path):** [Terraform](https://www.terraform.io/downloads)
+   ≥ 1.5, [gcloud](https://cloud.google.com/sdk/docs/install) configured, SSH
+   key at `~/.ssh/id_ed25519.pub` (or set `public_key_path` in tfvars).
 
 2. **Configure:** Copy the example files, then follow the [Tutorial: Setting up cloud-init.yaml](#tutorial-setting-up-cloud-inityaml) below. Also set your GCP project:
    ```bash
@@ -62,17 +72,32 @@ The default Clawless config is conservative: admin-only messaging, no email, sco
 
 4. **SSH:** Use the `ssh_command` output, e.g. `ssh dev@<nat_ip>`.
 
+### Security note (applies to both providers)
+
+Parity defaults expose port `18789` publicly for fast setup. Recommended
+hardening is SSH tunnel-only access to the Control UI (`localhost:18789`) and
+no public gateway ingress.
+
 ## Tutorial: Setting up cloud-init.yaml
 
 After copying `cloud-init.yaml.example` to `cloud-init.yaml`, open `cloud-init.yaml` and replace the following placeholders. Use your editor’s search (e.g. search for `your-`) to find each one.
 
-### Required (default model is OpenAI)
+### Required (default model is Azure OpenAI)
 
 | Placeholder | Variable | Where to get it |
 |-------------|----------|------------------|
-| `your-openai-api-key` | `OPENAI_API_KEY` | [OpenAI API keys](https://platform.openai.com/api-keys). Used as the primary LLM (default: `openai/gpt-5.2`). |
+| `your-azure-openai-api-key` | `AZURE_OPENAI_API_KEY` | Azure Portal → your Azure OpenAI resource → **Keys and Endpoint** → KEY 1. |
+| `your-azure-openai-endpoint` | `AZURE_OPENAI_ENDPOINT` | Same page → **Endpoint** (e.g. `https://<resource>.openai.azure.com/`). |
 
-Replace **every** occurrence of `your-openai-api-key` in the file (there are two: one in the `echo` block, one in the `ENVEOF` block).
+Replace **every** occurrence of `your-azure-openai-api-key` and `your-azure-openai-endpoint` in the file (there are two of each: one in the `echo` block, one in the `ENVEOF` block). The default primary model is `azure-openai-responses/gpt-5.5`.
+
+### Optional: direct OpenAI (fallback)
+
+| Placeholder | Variable | Where to get it |
+|-------------|----------|------------------|
+| `your-openai-api-key` | `OPENAI_API_KEY` | [OpenAI API keys](https://platform.openai.com/api-keys). Used as fallback if Azure OpenAI is unreachable. |
+
+Replace **every** occurrence of `your-openai-api-key` in the file (there are two: one in the `echo` block, one in the `ENVEOF` block). If you don't need a fallback, leave the placeholder or set a dummy value.
 
 ### Optional: other model (Gemini)
 
@@ -99,10 +124,11 @@ Replace each placeholder only if you use that integration. For unused ones you c
 ### Checklist
 
 1. Copy: `cp cloud-init.yaml.example cloud-init.yaml`
-2. Set **at least** `your-openai-api-key` everywhere it appears.
-3. Set `your-telegram-user-id` in the `openclaw.json` block if you use Telegram (search for `"allowFrom": ["your-telegram-user-id"]` and put your numeric user ID in the list).
-4. Set any other `your-*` values you need for plugins/skills.
-5. Save. Do **not** commit `cloud-init.yaml`.
+2. Set **at least** `your-azure-openai-api-key` and `your-azure-openai-endpoint` everywhere they appear.
+3. Optionally set `your-openai-api-key` everywhere it appears (used as fallback).
+4. Set `your-telegram-user-id` in the `openclaw.json` block if you use Telegram (search for `"allowFrom": ["your-telegram-user-id"]` and put your numeric user ID in the list).
+5. Set any other `your-*` values you need for plugins/skills.
+6. Save. Do **not** commit `cloud-init.yaml`.
 
 ## OpenClaw on the VM
 
@@ -184,7 +210,8 @@ On a fresh deployment, the Control UI will show `disconnected (1008): pairing re
 
 ### API prerequisites
 
-- **OpenAI:** The default model is `openai/gpt-5.2`; set `OPENAI_API_KEY` in `cloud-init.yaml` (required).
+- **Azure OpenAI (default):** The default model is `azure-openai-responses/gpt-5.5`; set `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` in `cloud-init.yaml` (required). Create an Azure OpenAI resource and deploy a model via [Azure AI Foundry](https://ai.azure.com/).
+- **OpenAI (fallback):** Set `OPENAI_API_KEY` if you want direct OpenAI as a fallback. Optional if Azure OpenAI is your only provider.
 - **Google/Gemini (optional):** Only needed if you switch the model to Gemini or use it as a fallback. Enable the [Generative Language API](https://console.developers.google.com/apis/api/generativelanguage.googleapis.com/overview) in your GCP project and set `GEMINI_API_KEY`.
 - **Anthropic/Claude:** Coming soon (see [Roadmap](#roadmap)).
 
@@ -211,9 +238,21 @@ Connect Apify to give OpenClaw the ability to scrape and extract structured data
 ## Repo contents
 
 - **Terraform:** `main.tf`, `variables.tf`, `outputs.tf`, `versions.tf` — one Ubuntu 22.04 VM in `europe-west3`; firewall allows TCP 18789 for OpenClaw.
+- **Azure Terraform:** `azure/main.tf`, `azure/variables.tf`,
+  `azure/outputs.tf`, `azure/versions.tf` — one Ubuntu 22.04 VM with NSG rules
+  for SSH and gateway parity.
 - **cloud-init.yaml.example** — template for cloud-init: Docker, Docker Compose, Node 20, Python 3, dev tools; clones OpenClaw, builds the image, and starts the gateway. Copy to `cloud-init.yaml` (gitignored) and fill in your keys.
 
-`.terraform/` and `*.tfstate` are gitignored; run `terraform init` after clone.
+`cloud-init.yaml`, `.terraform/`, `*.tfstate*`, and `*.tfvars` are gitignored
+for both stacks. Keep secrets only in local `cloud-init.yaml` and local tfvars.
+
+## Switching clouds safely
+
+Keep state isolated (`/` for GCP, `azure/` for Azure), then:
+
+1. Apply target cloud.
+2. Verify SSH tunnel + UI.
+3. Destroy old cloud stack to avoid duplicate runtime cost.
 
 ## Cost estimate
 
@@ -245,5 +284,5 @@ Clawless is **open source** under the [MIT License](LICENSE). Safe deployment pa
 - **Claude (Anthropic) support** — add Claude as a model option alongside OpenAI and Gemini.
 - **Open source models** — support for self-hosted models (e.g. Llama, Mistral) via local inference or API-compatible endpoints.
 - **Voice integration** — talk to your OpenClaw deployment using voice input/output (via VAPI or similar).
-- **Multi-cloud templates** — AWS and Azure variants of the Terraform config.
+- **More multi-cloud templates** — add an AWS variant alongside GCP + Azure.
 - **Secrets via Terraform variables** — move API keys out of `cloud-init.yaml` into `terraform.tfvars` with `templatefile()` injection, making the cloud-init file a secret-free template safe to commit.
