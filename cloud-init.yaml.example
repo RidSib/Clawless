@@ -56,8 +56,12 @@ runcmd:
     apt-get update -y
     apt-get install -y gh
 
-  # Vercel CLI (token via Terraform → VERCEL_TOKEN in compose / .env)
-  - npm install -g vercel
+  # GitHub token for interactive SSH shells (same PAT as compose / OpenClaw).
+  - |
+    echo 'export GITHUB_TOKEN="${github_token}"' >> /home/dev/.bashrc
+    echo 'export GH_TOKEN="$GITHUB_TOKEN"' >> /home/dev/.bashrc
+
+  # Vercel CLI lives only in the OpenClaw image (Dockerfile.runtime-extras).
 
   # Quality-of-life
   - echo 'alias ll="ls -alh"' >> /home/dev/.bashrc
@@ -91,6 +95,7 @@ runcmd:
     echo "VERCEL_TOKEN=${vercel_token}" >> /opt/openclaw/.env
     echo "VAPI_API_KEY=your-vapi-api-key" >> /opt/openclaw/.env
     echo "GITHUB_TOKEN=${github_token}" >> /opt/openclaw/.env
+    echo "GH_TOKEN=${github_token}" >> /opt/openclaw/.env
     echo "APIFY_TOKEN=your-apify-token" >> /opt/openclaw/.env
     echo "$TOKEN" > /home/dev/.openclaw-gateway-token
     chown dev:dev /home/dev/.openclaw-gateway-token
@@ -108,6 +113,7 @@ runcmd:
           AZURE_OPENAI_API_VERSION: $${AZURE_OPENAI_API_VERSION}
           TELEGRAM_BOT_TOKEN: $${TELEGRAM_BOT_TOKEN}
           GITHUB_TOKEN: $${GITHUB_TOKEN}
+          GH_TOKEN: $${GH_TOKEN}
           VERCEL_TOKEN: $${VERCEL_TOKEN}
       openclaw-cli:
         environment:
@@ -118,6 +124,7 @@ runcmd:
           AZURE_OPENAI_API_VERSION: $${AZURE_OPENAI_API_VERSION}
           TELEGRAM_BOT_TOKEN: $${TELEGRAM_BOT_TOKEN}
           GITHUB_TOKEN: $${GITHUB_TOKEN}
+          GH_TOKEN: $${GH_TOKEN}
           VERCEL_TOKEN: $${VERCEL_TOKEN}
     OVEOF
     chown dev:dev /opt/openclaw/docker-compose.override.yml
@@ -132,6 +139,7 @@ runcmd:
     VERCEL_TOKEN=${vercel_token}
     VAPI_API_KEY=your-vapi-api-key
     GITHUB_TOKEN=${github_token}
+    GH_TOKEN=${github_token}
     APIFY_TOKEN=your-apify-token
     ENVEOF
     chown 1000:1000 /home/dev/.openclaw/.env
@@ -245,8 +253,13 @@ runcmd:
     OCEOF
     chown 1000:1000 /home/dev/.openclaw/openclaw.json
     chmod 600 /home/dev/.openclaw/openclaw.json
-  # Build and start OpenClaw gateway (first boot may take 15–20 min)
+  # Build OpenClaw base image, then layer gh + vercel CLI into openclaw:local.
   - cd /opt/openclaw && docker build -t openclaw:local -f Dockerfile .
+  - |
+    echo '${openclaw_runtime_extras_dockerfile_b64}' | base64 -d \
+      > /opt/openclaw/Dockerfile.runtime-extras
+    cd /opt/openclaw && docker build -t openclaw:local -f Dockerfile.runtime-extras .
+  # Start gateway (first boot may take 15–20 min)
   - cd /opt/openclaw && docker compose up -d openclaw-gateway
   # After gateway is running, seed workspace persona files (overwrite bootstrap).
   - |

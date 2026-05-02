@@ -40,8 +40,11 @@ The default Clawless config is conservative: admin-only messaging, no email, sco
 
 - **Azure / GCP:** One VM per stack (Ubuntu 22.04). NSG or firewall allows SSH
   (22) and the OpenClaw gateway (18789) per provider defaults.
-- **VM host:** cloud-init runs on first boot (Docker, Node, GitHub CLI,
-  Vercel CLI, Python, OpenClaw clone). Config and workspace live at `~/.openclaw`.
+- **VM host:** cloud-init installs Docker, Node, **`gh`** on Ubuntu, Python,
+  clone/build OpenClaw. **`vercel`** is installed only inside the **`openclaw:local`**
+  image (extras layer). Tokens: **`GITHUB_TOKEN`** / **`GH_TOKEN`** in **`dev`**
+  login shells; **`VERCEL_TOKEN`** / **`GITHUB_TOKEN`** in compose for the
+  gateway. Config and workspace live at `~/.openclaw`.
 - **Docker:** Single image `openclaw:local`. Long-running **openclaw-gateway** (port 18789); **openclaw-cli** runs on demand (e.g. dashboard, pairing).
 - **You:** SSH tunnel to the VM, then open `http://localhost:18789` for the Control UI. No direct public exposure of the UI.
 
@@ -274,7 +277,8 @@ Connect Apify to give OpenClaw the ability to scrape and extract structured data
   `azure/outputs.tf`, `azure/versions.tf` — one Ubuntu 22.04 VM with NSG rules
   for SSH and gateway parity.
 - **cloud-init.yaml.example** — template for cloud-init: Docker, Docker Compose,
-  Node 20, Python 3, GitHub CLI (`gh`), Vercel CLI (`vercel`), dev tools;
+  Node 20, Python 3, **`gh`** on the VM, **`gh` + `vercel`** baked into the
+  OpenClaw Docker image via **`docker/openclaw-runtime-extras.Dockerfile`**;
   clones OpenClaw, builds the
   image, and starts the gateway. Copy to `cloud-init.yaml` (gitignored) and fill
   in your keys.
