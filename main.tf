@@ -30,6 +30,7 @@ resource "google_compute_instance" "dev" {
     user-data = templatefile("${path.module}/cloud-init.yaml", {
       ssh_public_key         = data.local_file.ssh_key.content
       telegram_user_id       = var.telegram_user_id
+      github_token           = var.github_token
       workspace_identity_b64 = base64encode(file("${path.module}/workspace-seed/IDENTITY.md"))
       workspace_user_b64     = base64encode(file("${path.module}/workspace-seed/USER.md"))
       workspace_soul_b64     = base64encode(file("${path.module}/workspace-seed/SOUL.md"))

@@ -141,7 +141,7 @@ If you don’t use Gemini, you can leave the placeholder or set a dummy value; t
 | `your-notion-api-key` | `NOTION_API_KEY` | [Notion integrations](https://www.notion.so/my-integrations). For the Notion skill. |
 | `your-vercel-token` | `VERCEL_TOKEN` | [Vercel account tokens](https://vercel.com/account/tokens). For Vercel-related tools. |
 | `your-vapi-api-key` | `VAPI_API_KEY` | [VAPI dashboard](https://dashboard.vapi.ai). For voice/API integrations. |
-| `your-github-pat` | `GITHUB_TOKEN` | [GitHub Personal Access Token](https://github.com/settings/tokens). For repo access from OpenClaw. |
+| `your-github-pat` | **Terraform** `github_token` | Set **`github_token`** in **`terraform.tfvars`** (gitignored). Terraform injects it into **`cloud-init.yaml`** for **`GITHUB_TOKEN`** in `/opt/openclaw/.env`, `~/.openclaw/.env`, and Docker Compose — same pattern as **`telegram_user_id`**. [Create a PAT](https://github.com/settings/tokens). |
 | `your-apify-token` | `APIFY_TOKEN` | [Apify console](https://console.apify.com/account/integrations). For Apify actors. |
 
 Replace each placeholder only if you use that integration. For unused ones you can leave the placeholder or a dummy value.
@@ -155,8 +155,9 @@ Replace each placeholder only if you use that integration. For unused ones you c
 3. Optionally set `your-openai-api-key` everywhere it appears (used as fallback).
 4. Replace `your-vm-public-ip` in `gateway.controlUi.allowedOrigins` with your VM’s public IP if you open Control UI via `http://<ip>:18789` (tunnel-only users can leave localhost entries only — see **`docs/openclaw-azure.md`**).
 5. For **Telegram:** set **`telegram_user_id`** in **`terraform.tfvars`** to your numeric ID, and replace every **`your-telegram-bot-token`** in **`cloud-init.yaml`** with your BotFather token.
-6. Set any other `your-*` values you need for plugins/skills.
-7. Save. Do **not** commit `cloud-init.yaml`.
+6. Set **`github_token`** in **`terraform.tfvars`** if you use GitHub from OpenClaw (leave **`your-github-pat`** if unused).
+7. Set any other `your-*` values you need for plugins/skills.
+8. Save. Do **not** commit `cloud-init.yaml`.
 
 ## OpenClaw on the VM
 

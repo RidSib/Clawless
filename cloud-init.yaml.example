@@ -87,7 +87,7 @@ runcmd:
     echo "NOTION_API_KEY=your-notion-api-key" >> /opt/openclaw/.env
     echo "VERCEL_TOKEN=your-vercel-token" >> /opt/openclaw/.env
     echo "VAPI_API_KEY=your-vapi-api-key" >> /opt/openclaw/.env
-    echo "GITHUB_TOKEN=your-github-pat" >> /opt/openclaw/.env
+    echo "GITHUB_TOKEN=${github_token}" >> /opt/openclaw/.env
     echo "APIFY_TOKEN=your-apify-token" >> /opt/openclaw/.env
     echo "$TOKEN" > /home/dev/.openclaw-gateway-token
     chown dev:dev /home/dev/.openclaw-gateway-token
@@ -104,6 +104,7 @@ runcmd:
           AZURE_OPENAI_ENDPOINT: $${AZURE_OPENAI_ENDPOINT}
           AZURE_OPENAI_API_VERSION: $${AZURE_OPENAI_API_VERSION}
           TELEGRAM_BOT_TOKEN: $${TELEGRAM_BOT_TOKEN}
+          GITHUB_TOKEN: $${GITHUB_TOKEN}
       openclaw-cli:
         environment:
           GEMINI_API_KEY: $${GEMINI_API_KEY}
@@ -112,6 +113,7 @@ runcmd:
           AZURE_OPENAI_ENDPOINT: $${AZURE_OPENAI_ENDPOINT}
           AZURE_OPENAI_API_VERSION: $${AZURE_OPENAI_API_VERSION}
           TELEGRAM_BOT_TOKEN: $${TELEGRAM_BOT_TOKEN}
+          GITHUB_TOKEN: $${GITHUB_TOKEN}
     OVEOF
     chown dev:dev /opt/openclaw/docker-compose.override.yml
     cat > /home/dev/.openclaw/.env << 'ENVEOF'
@@ -124,7 +126,7 @@ runcmd:
     NOTION_API_KEY=your-notion-api-key
     VERCEL_TOKEN=your-vercel-token
     VAPI_API_KEY=your-vapi-api-key
-    GITHUB_TOKEN=your-github-pat
+    GITHUB_TOKEN=${github_token}
     APIFY_TOKEN=your-apify-token
     ENVEOF
     chown 1000:1000 /home/dev/.openclaw/.env

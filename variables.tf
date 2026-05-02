@@ -35,3 +35,10 @@ variable "telegram_user_id" {
     error_message = "telegram_user_id must be your numeric Telegram ID (digits only), or the placeholder your-telegram-user-id if you are not using Telegram yet."
   }
 }
+
+variable "github_token" {
+  description = "GitHub PAT for OpenClaw / gh (set in terraform.tfvars; never commit)."
+  type        = string
+  sensitive   = true
+  default     = "your-github-pat"
+}
