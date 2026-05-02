@@ -32,3 +32,5 @@ realtime_public_url = "https://your-realtime-public-url"
 realtime_provider = "azure"
 
 realtime_caddy_hostname = ""
+
+# cloudflare_tunnel_token = "eyJ..."

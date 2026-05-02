@@ -301,3 +301,16 @@ runcmd:
     DEBIAN_FRONTEND=noninteractive apt-get install -y caddy
     printf '%s\n' "${realtime_caddy_hostname} {" '  reverse_proxy 127.0.0.1:5050' '}' > /etc/caddy/Caddyfile
     systemctl enable --now caddy
+  # Cloudflare Tunnel → localhost:5050 (set cloudflare_tunnel_token in terraform.tfvars).
+  # One-time in dashboard: route voice hostname → http://localhost:5050 (same as PUBLIC_URL).
+  - |
+    if [ "${cloudflare_tunnel_flag}" != "1" ]; then exit 0; fi
+    mkdir -p --mode=0755 /usr/share/keyrings
+    curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+      | tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+    echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared jammy main' \
+      > /etc/apt/sources.list.d/cloudflared.list
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
+    cloudflared service install '${cloudflare_tunnel_token}'
+    systemctl enable --now cloudflared

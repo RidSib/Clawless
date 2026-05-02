@@ -123,3 +123,10 @@ variable "realtime_caddy_hostname" {
   type        = string
   default     = ""
 }
+
+variable "cloudflare_tunnel_token" {
+  description = "Cloudflare Tunnel connector token from Zero Trust → Tunnels → your tunnel → Install (paste full token only in terraform.tfvars)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

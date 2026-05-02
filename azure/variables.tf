@@ -144,3 +144,10 @@ variable "realtime_caddy_hostname" {
   type        = string
   default     = ""
 }
+
+variable "cloudflare_tunnel_token" {
+  description = "Cloudflare Tunnel connector token from Zero Trust → Tunnels → Install."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

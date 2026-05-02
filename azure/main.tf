@@ -153,6 +153,8 @@ resource "azurerm_linux_virtual_machine" "dev" {
     realtime_voice_repo_url = var.realtime_voice_repo_url
     realtime_caddy_flag = trimspace(var.realtime_caddy_hostname) != "" ? "1" : "0"
     realtime_caddy_hostname = var.realtime_caddy_hostname
+    cloudflare_tunnel_flag = trimspace(var.cloudflare_tunnel_token) != "" ? "1" : "0"
+    cloudflare_tunnel_token = var.cloudflare_tunnel_token
     openclaw_runtime_extras_dockerfile_b64 = base64encode(file(
       "${path.module}/../docker/openclaw-runtime-extras.Dockerfile"
     ))

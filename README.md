@@ -109,6 +109,14 @@ Otherwise use a tunnel URL as **`realtime_public_url`** and skip Caddy.
 Manual install on an existing VM: **`sudo ./scripts/install-on-vm.sh`** (see that repo’s
 README). OpenClaw stays on **18789**.
 
+**Cloudflare Tunnel (simplest “paste a token” path):** In **Zero Trust → Tunnels** create a
+tunnel and add a **public hostname** `voice.<your-domain>` → **`http://localhost:5050`**.
+Copy the **connector token** from **Install** and set **`cloudflare_tunnel_token`** in
+**`terraform.tfvars`** (never commit). Set **`realtime_public_url`** to **`https://voice.<your-domain>`**
+(no trailing slash). Cloud-init installs **`cloudflared`** and registers **systemd**. You can set
+**`realtime_nsg_https = false`** (tunnel is outbound-only). Leave **`realtime_caddy_hostname`**
+empty when using Tunnel.
+
 ### Security note (applies to both providers)
 
 Parity defaults expose port `18789` publicly for fast setup. Recommended

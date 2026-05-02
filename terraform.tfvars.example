@@ -36,3 +36,8 @@ realtime_caddy_hostname = ""
 # realtime_voice_enabled = true
 # realtime_nsg_https     = true
 # realtime_voice_repo_url = "https://github.com/RidSib/realtime-phonecalls.git"
+
+# Cloudflare Tunnel — Zero Trust → Networks → Tunnels → Create → copy connector token.
+# In the tunnel UI add Public hostname: voice.<your-domain> → http://localhost:5050
+# Match realtime_public_url = https://voice.<your-domain>
+# cloudflare_tunnel_token = "eyJ..."
