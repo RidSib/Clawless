@@ -42,3 +42,10 @@ variable "github_token" {
   sensitive   = true
   default     = "your-github-pat"
 }
+
+variable "vercel_token" {
+  description = "Vercel token for deployments/API (terraform.tfvars only)."
+  type        = string
+  sensitive   = true
+  default     = "your-vercel-token"
+}

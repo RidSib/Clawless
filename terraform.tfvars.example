@@ -9,3 +9,6 @@ telegram_user_id = "your-telegram-user-id"
 
 # GitHub PAT (classic ghp_… or fine-grained). Same value as cloud-init GITHUB_*.
 github_token = "your-github-pat"
+
+# Vercel — https://vercel.com/account/tokens
+vercel_token = "your-vercel-token"

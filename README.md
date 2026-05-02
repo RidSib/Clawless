@@ -139,7 +139,7 @@ If you don’t use Gemini, you can leave the placeholder or set a dummy value; t
 | `your-telegram-bot-token` | `TELEGRAM_BOT_TOKEN` | [@BotFather](https://t.me/BotFather). Replace in **both** `.env` sections inside `cloud-init.yaml` (`/opt/openclaw/.env` and `~/.openclaw/.env`). If this stays a placeholder, the bot never authenticates (Telegram API errors). |
 | `your-telegram-user-id` | **Terraform** `telegram_user_id` | Your **numeric** user ID (not `@username`). Set in **`terraform.tfvars`** as `telegram_user_id = "123456789"`. Injected into `openclaw.json` for `allowFrom`, `groupAllowFrom`, and `commands.ownerAllowFrom`. |
 | `your-notion-api-key` | `NOTION_API_KEY` | [Notion integrations](https://www.notion.so/my-integrations). For the Notion skill. |
-| `your-vercel-token` | `VERCEL_TOKEN` | [Vercel account tokens](https://vercel.com/account/tokens). For Vercel-related tools. |
+| `your-vercel-token` | **Terraform** `vercel_token` | Set **`vercel_token`** in **`terraform.tfvars`**. Injected like **`github_token`**. [Create a token](https://vercel.com/account/tokens). |
 | `your-vapi-api-key` | `VAPI_API_KEY` | [VAPI dashboard](https://dashboard.vapi.ai). For voice/API integrations. |
 | `your-github-pat` | **Terraform** `github_token` | Set **`github_token`** in **`terraform.tfvars`** (gitignored). Terraform injects it into **`cloud-init.yaml`** for **`GITHUB_TOKEN`** in `/opt/openclaw/.env`, `~/.openclaw/.env`, and Docker Compose — same pattern as **`telegram_user_id`**. [Create a PAT](https://github.com/settings/tokens). |
 | `your-apify-token` | `APIFY_TOKEN` | [Apify console](https://console.apify.com/account/integrations). For Apify actors. |
@@ -156,8 +156,9 @@ Replace each placeholder only if you use that integration. For unused ones you c
 4. Replace `your-vm-public-ip` in `gateway.controlUi.allowedOrigins` with your VM’s public IP if you open Control UI via `http://<ip>:18789` (tunnel-only users can leave localhost entries only — see **`docs/openclaw-azure.md`**).
 5. For **Telegram:** set **`telegram_user_id`** in **`terraform.tfvars`** to your numeric ID, and replace every **`your-telegram-bot-token`** in **`cloud-init.yaml`** with your BotFather token.
 6. Set **`github_token`** in **`terraform.tfvars`** if you use GitHub from OpenClaw (leave **`your-github-pat`** if unused).
-7. Set any other `your-*` values you need for plugins/skills.
-8. Save. Do **not** commit `cloud-init.yaml`.
+7. Set **`vercel_token`** in **`terraform.tfvars`** for Vercel (leave **`your-vercel-token`** if unused).
+8. Set any other `your-*` values you need for plugins/skills.
+9. Save. Do **not** commit `cloud-init.yaml`.
 
 ## OpenClaw on the VM
 

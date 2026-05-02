@@ -124,6 +124,7 @@ resource "azurerm_linux_virtual_machine" "dev" {
     ssh_public_key         = trimspace(data.local_file.ssh_key.content)
     telegram_user_id       = var.telegram_user_id
     github_token           = var.github_token
+    vercel_token           = var.vercel_token
     workspace_identity_b64 = base64encode(file("${path.module}/../workspace-seed/IDENTITY.md"))
     workspace_user_b64     = base64encode(file("${path.module}/../workspace-seed/USER.md"))
     workspace_soul_b64     = base64encode(file("${path.module}/../workspace-seed/SOUL.md"))

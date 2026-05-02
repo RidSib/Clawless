@@ -16,3 +16,5 @@ telegram_user_id = "your-telegram-user-id"
 
 # GitHub PAT for OpenClaw / gh. Never commit real values here (gitignored).
 github_token = "your-github-pat"
+
+vercel_token = "your-vercel-token"
