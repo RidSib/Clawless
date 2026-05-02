@@ -12,3 +12,27 @@ github_token = "your-github-pat"
 
 # Vercel — https://vercel.com/account/tokens
 vercel_token = "your-vercel-token"
+
+# Azure OpenAI (OpenClaw + Twilio bridge). Same Foundry endpoint shape as README.
+azure_openai_api_key                  = "your-azure-openai-api-key"
+azure_openai_endpoint                 = "your-azure-openai-endpoint"
+azure_openai_realtime_deployment_name = "your-realtime-deployment-name"
+
+openai_api_key = "your-openai-api-key"
+
+# Twilio voice bridge — https://console.twilio.com (Auth token).
+twilio_auth_token = "your-twilio-auth-token"
+
+# Public HTTPS origin Twilio will call (tunnel URL ok). No trailing slash.
+realtime_public_url = "https://your-realtime-public-url"
+
+# azure | openai
+realtime_provider = "azure"
+
+# Optional: DNS name pointing at VM public IP for automatic HTTPS + proxy.
+# Leave "" to skip Caddy (use Cloudflare Tunnel / ngrok and set realtime_public_url).
+realtime_caddy_hostname = ""
+
+# realtime_voice_enabled = true
+# realtime_nsg_https     = true
+# realtime_voice_repo_url = "https://github.com/RidSib/realtime-phonecalls.git"

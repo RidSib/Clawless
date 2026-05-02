@@ -95,11 +95,19 @@ run **`./scripts/clawless-full-redeploy.sh`** from the repo root (`--help` lists
 
 ### Twilio voice bridge (optional)
 
-Deploy **[realtime-phonecalls](https://github.com/RidSib/realtime-phonecalls)** on
-the same VM: clone that repo on the instance and run
-**`sudo ./scripts/install-on-vm.sh`** (see its README **Production**). Twilio
-needs a public **HTTPS** URL (NSG **443**, reverse proxy, or tunnel); OpenClaw
-stays on **18789**.
+Terraform can provision **[realtime-phonecalls](https://github.com/RidSib/realtime-phonecalls)** on
+first boot: set **`twilio_auth_token`**, **`realtime_public_url`** (HTTPS, no
+trailing slash), **`azure_openai_*`** / **`openai_api_key`**, and **`realtime_provider`**
+in **`terraform.tfvars`**. Cloud-init writes **`/etc/realtime-voice.env`**, clones the
+repo, builds, enables **`realtime-voice.service`**, and opens NSG / firewall **443**
+when **`realtime_nsg_https`** is true (default).
+
+Optional **`realtime_caddy_hostname`** (e.g. **`voice.example.com`**) installs **Caddy**
+with HTTPS reverse proxy to **`127.0.0.1:5050`**; DNS must point at the VM public IP.
+Otherwise use a tunnel URL as **`realtime_public_url`** and skip Caddy.
+
+Manual install on an existing VM: **`sudo ./scripts/install-on-vm.sh`** (see that repo’s
+README). OpenClaw stays on **18789**.
 
 ### Security note (applies to both providers)
 
@@ -113,20 +121,23 @@ After copying `cloud-init.yaml.example` to `cloud-init.yaml`, open `cloud-init.y
 
 ### Required (default model is Azure OpenAI)
 
-| Placeholder | Variable | Where to get it |
-|-------------|----------|------------------|
-| `your-azure-openai-api-key` | `AZURE_OPENAI_API_KEY` | Azure Portal → your Azure OpenAI resource → **Keys and Endpoint** → KEY 1. |
-| `your-azure-openai-endpoint` | `AZURE_OPENAI_ENDPOINT` | Azure AI Foundry project **OpenAI-compatible** base: `https://<resource>.services.ai.azure.com/api/projects/<project-id>/openai/v1`. See [`docs/openclaw-azure.md`](docs/openclaw-azure.md). |
+Set **`azure_openai_api_key`** and **`azure_openai_endpoint`** in **`terraform.tfvars`**
+(same values as OpenClaw). Terraform injects them into **`cloud-init.yaml`**—you no
+longer hand-edit those secrets in **`cloud-init.yaml`** when using this flow.
 
-Replace **every** occurrence of `your-azure-openai-api-key` and `your-azure-openai-endpoint` in the file (there are two of each: one in the `echo` block, one in the `ENVEOF` block). The default primary model is `azure-openai-responses/gpt-5.5` (`openai-completions` adapter toward Azure chat — details in **`docs/openclaw-azure.md`**).
+| Terraform variable | Maps to | Where to get it |
+|--------------------|---------|-----------------|
+| **`azure_openai_api_key`** | `AZURE_OPENAI_API_KEY` | Azure / Foundry key (see [`docs/openclaw-azure.md`](docs/openclaw-azure.md)). |
+| **`azure_openai_endpoint`** | `AZURE_OPENAI_ENDPOINT` | OpenAI-compatible base `…/openai/v1`. |
+
+The default primary model is **`azure-openai-responses/gpt-5.5`** (`openai-completions`
+adapter — details in **`docs/openclaw-azure.md`**).
 
 ### Optional: direct OpenAI (fallback)
 
-| Placeholder | Variable | Where to get it |
-|-------------|----------|------------------|
-| `your-openai-api-key` | `OPENAI_API_KEY` | [OpenAI API keys](https://platform.openai.com/api-keys). Used as fallback if Azure OpenAI is unreachable. |
-
-Replace **every** occurrence of `your-openai-api-key` in the file (there are two: one in the `echo` block, one in the `ENVEOF` block). If you don't need a fallback, leave the placeholder or set a dummy value.
+Set **`openai_api_key`** in **`terraform.tfvars`**. Injected into OpenClaw env and the
+Twilio bridge (when **`realtime_provider`** is **`openai`**). Leave the placeholder if
+unused.
 
 ### Optional: other model (Gemini)
 
@@ -147,6 +158,7 @@ If you don’t use Gemini, you can leave the placeholder or set a dummy value; t
 | `your-vapi-api-key` | `VAPI_API_KEY` | [VAPI dashboard](https://dashboard.vapi.ai). For voice/API integrations. |
 | `your-github-pat` | **Terraform** `github_token` | Set **`github_token`** in **`terraform.tfvars`** (gitignored). Terraform injects it into **`cloud-init.yaml`** for **`GITHUB_TOKEN`** in `/opt/openclaw/.env`, `~/.openclaw/.env`, and Docker Compose — same pattern as **`telegram_user_id`**. [Create a PAT](https://github.com/settings/tokens). |
 | `your-apify-token` | `APIFY_TOKEN` | [Apify console](https://console.apify.com/account/integrations). For Apify actors. |
+| Twilio voice | **`terraform.tfvars`** | **`twilio_auth_token`**, **`realtime_public_url`**, **`azure_openai_realtime_deployment_name`**, **`realtime_provider`**. Optional **`realtime_caddy_hostname`**, **`realtime_voice_enabled`**, **`realtime_nsg_https`**. |
 
 Replace each placeholder only if you use that integration. For unused ones you can leave the placeholder or a dummy value.
 
@@ -155,8 +167,11 @@ Replace each placeholder only if you use that integration. For unused ones you c
 ### Checklist
 
 1. Copy: `cp cloud-init.yaml.example cloud-init.yaml`
-2. Set **at least** `your-azure-openai-api-key` and `your-azure-openai-endpoint` everywhere they appear.
-3. Optionally set `your-openai-api-key` everywhere it appears (used as fallback).
+2. Set **`azure_openai_api_key`**, **`azure_openai_endpoint`**, **`openai_api_key`** (optional),
+   **`twilio_auth_token`**, **`realtime_public_url`**, **`azure_openai_realtime_deployment_name`**
+   in **`terraform.tfvars`** (see **`terraform.tfvars.example`**).
+3. Edit **`cloud-init.yaml`** only for placeholders Terraform does not inject (e.g.
+   Telegram bot token, Gemini, Notion) unless you extend Terraform.
 4. Replace `your-vm-public-ip` in `gateway.controlUi.allowedOrigins` with your VM’s public IP if you open Control UI via `http://<ip>:18789` (tunnel-only users can leave localhost entries only — see **`docs/openclaw-azure.md`**).
 5. For **Telegram:** set **`telegram_user_id`** in **`terraform.tfvars`** to your numeric ID, and replace every **`your-telegram-bot-token`** in **`cloud-init.yaml`** with your BotFather token.
 6. Set **`github_token`** in **`terraform.tfvars`** if you use GitHub from OpenClaw (leave **`your-github-pat`** if unused).

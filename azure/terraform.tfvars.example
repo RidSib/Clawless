@@ -18,3 +18,17 @@ telegram_user_id = "your-telegram-user-id"
 github_token = "your-github-pat"
 
 vercel_token = "your-vercel-token"
+
+azure_openai_api_key                  = "your-azure-openai-api-key"
+azure_openai_endpoint                 = "your-azure-openai-endpoint"
+azure_openai_realtime_deployment_name = "your-realtime-deployment-name"
+
+openai_api_key = "your-openai-api-key"
+
+twilio_auth_token = "your-twilio-auth-token"
+
+realtime_public_url = "https://your-realtime-public-url"
+
+realtime_provider = "azure"
+
+realtime_caddy_hostname = ""

@@ -77,8 +77,8 @@ runcmd:
   - |
     TOKEN=$(openssl rand -hex 32)
     TGID="${telegram_user_id}"
-    AZURE_KEY="your-azure-openai-api-key"
-    AZURE_EP="your-azure-openai-endpoint"
+    AZURE_KEY="${azure_openai_api_key}"
+    AZURE_EP="${azure_openai_endpoint}"
     echo "OPENCLAW_CONFIG_DIR=/home/dev/.openclaw" > /opt/openclaw/.env
     echo "OPENCLAW_WORKSPACE_DIR=/home/dev/.openclaw/workspace" >> /opt/openclaw/.env
     echo "OPENCLAW_GATEWAY_TOKEN=$TOKEN" >> /opt/openclaw/.env
@@ -86,7 +86,7 @@ runcmd:
     echo "OPENCLAW_GATEWAY_BIND=lan" >> /opt/openclaw/.env
     echo "OPENCLAW_IMAGE=openclaw:local" >> /opt/openclaw/.env
     echo "GEMINI_API_KEY=your-google-api-key" >> /opt/openclaw/.env
-    echo "OPENAI_API_KEY=your-openai-api-key" >> /opt/openclaw/.env
+    echo "OPENAI_API_KEY=${openai_api_key}" >> /opt/openclaw/.env
     echo "AZURE_OPENAI_API_KEY=$AZURE_KEY" >> /opt/openclaw/.env
     echo "AZURE_OPENAI_ENDPOINT=$AZURE_EP" >> /opt/openclaw/.env
     echo "AZURE_OPENAI_API_VERSION=2025-04-01-preview" >> /opt/openclaw/.env
@@ -130,9 +130,9 @@ runcmd:
     chown dev:dev /opt/openclaw/docker-compose.override.yml
     cat > /home/dev/.openclaw/.env << 'ENVEOF'
     GEMINI_API_KEY=your-google-api-key
-    OPENAI_API_KEY=your-openai-api-key
-    AZURE_OPENAI_API_KEY=your-azure-openai-api-key
-    AZURE_OPENAI_ENDPOINT=your-azure-openai-endpoint
+    OPENAI_API_KEY=${openai_api_key}
+    AZURE_OPENAI_API_KEY=${azure_openai_api_key}
+    AZURE_OPENAI_ENDPOINT=${azure_openai_endpoint}
     AZURE_OPENAI_API_VERSION=2025-04-01-preview
     TELEGRAM_BOT_TOKEN=your-telegram-bot-token
     NOTION_API_KEY=your-notion-api-key
@@ -273,3 +273,31 @@ runcmd:
     printf '%s' "${workspace_user_b64}" | base64 -d > /home/dev/.openclaw/workspace/USER.md
     printf '%s' "${workspace_soul_b64}" | base64 -d > /home/dev/.openclaw/workspace/SOUL.md
     chown 1000:1000 /home/dev/.openclaw/workspace/IDENTITY.md /home/dev/.openclaw/workspace/USER.md /home/dev/.openclaw/workspace/SOUL.md
+  # Twilio realtime voice bridge (Terraform → /etc/realtime-voice.env).
+  - |
+    if [ "${realtime_voice_flag}" != "1" ]; then exit 0; fi
+    echo "PUBLIC_URL=${realtime_public_url}" > /etc/realtime-voice.env
+    echo "PORT=5050" >> /etc/realtime-voice.env
+    echo "REALTIME_PROVIDER=${realtime_provider}" >> /etc/realtime-voice.env
+    echo "TWILIO_AUTH_TOKEN=${twilio_auth_token}" >> /etc/realtime-voice.env
+    echo "TWILIO_VALIDATE_SIGNATURE=true" >> /etc/realtime-voice.env
+    echo "AZURE_OPENAI_ENDPOINT=${azure_openai_endpoint}" >> /etc/realtime-voice.env
+    echo "AZURE_OPENAI_API_KEY=${azure_openai_api_key}" >> /etc/realtime-voice.env
+    echo "AZURE_OPENAI_DEPLOYMENT_NAME=${azure_openai_realtime_deployment_name}" >> /etc/realtime-voice.env
+    echo "OPENAI_API_KEY=${openai_api_key}" >> /etc/realtime-voice.env
+    chmod 600 /etc/realtime-voice.env
+    install -d -o dev -g dev -m 755 /home/dev
+    if [ ! -d /home/dev/realtime-phonecalls/.git ]; then
+      sudo -u dev git clone --depth 1 '${realtime_voice_repo_url}' /home/dev/realtime-phonecalls
+    fi
+    sudo -u dev env HOME=/home/dev bash -c 'cd /home/dev/realtime-phonecalls && git pull --ff-only && npm ci && npm run build'
+    install -m 644 /home/dev/realtime-phonecalls/deploy/systemd/realtime-voice.service /etc/systemd/system/realtime-voice.service
+    systemctl daemon-reload
+    systemctl enable --now realtime-voice
+  # Optional Caddy HTTPS → bridge on :5050 (set realtime_caddy_hostname in tfvars).
+  - |
+    if [ "${realtime_caddy_flag}" != "1" ]; then exit 0; fi
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y caddy
+    printf '%s\n' "${realtime_caddy_hostname} {" '  reverse_proxy 127.0.0.1:5050' '}' > /etc/caddy/Caddyfile
+    systemctl enable --now caddy
